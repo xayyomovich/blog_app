@@ -1,6 +1,7 @@
 from decouple import config
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -15,6 +16,9 @@ SECRET_KEY = 'django-insecure-!)^8gnj4v$d)cg&)&-6+pnb2qan6nu6d&$0hsu-uc*#!rx4k=4
 DEBUG = True
 
 ALLOWED_HOSTS = []
+
+# Load environment variables from .env
+load_dotenv()
 
 # Application definition
 
@@ -56,6 +60,9 @@ TEMPLATES = [
         },
     },
 ]
+
+# Get the Gemini API Key from environment
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 WSGI_APPLICATION = 'mysite.wsgi.application'
 
@@ -105,6 +112,7 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/

@@ -1,0 +1,188 @@
+{% extends 'blog/base.html' %}
+{% block title %}AI Chat - My Blog{% endblock %}
+{% block content %}
+    <h1>🤖 AI Chat Assistant</h1>
+    <p>Ask me anything! I'm powered by Gemini AI.</p>
+    
+    <div id="chat-container" style="max-width: 800px; margin: 20px 0;">
+        <!-- Chat Messages -->
+        <div id="chat-messages" style="height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 20px; background: #f9f9f9; border-radius: 8px; margin-bottom: 20px;">
+            <div class="chat-message ai-message" style="margin-bottom: 15px; padding: 10px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
+                <strong>AI Assistant:</strong> Hello! I'm here to help answer your questions. What would you like to know?
+            </div>
+        </div>
+        
+        <!-- Input Area -->
+        <div id="chat-input-container" style="display: flex; gap: 10px;">
+            <textarea id="user-question" placeholder="Ask me anything..." style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 6px; resize: none; font-family: inherit;" rows="3"></textarea>
+            <button id="send-question" style="background: #00abff; color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; align-self: flex-end;">
+                Send 🚀
+            </button>
+        </div>
+        
+        <div id="chat-error" style="margin-top: 15px; color: #cc0033; display: none; padding: 10px; background: #ffebee; border-radius: 4px;"></div>
+    </div>
+
+    <style>
+        .chat-message {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            line-height: 1.5;
+        }
+        
+        .user-message {
+            background: #e8f5e8;
+            border-left: 4px solid #4caf50;
+            margin-left: 20px;
+        }
+        
+        .ai-message {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            margin-right: 20px;
+        }
+        
+        .loading-message {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            margin-right: 20px;
+        }
+        
+        #user-question {
+            font-size: 14px;
+        }
+        
+        #send-question:hover {
+            background: #0099e6;
+        }
+        
+        #send-question:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        #chat-messages {
+            scrollbar-width: thin;
+            scrollbar-color: #ccc #f9f9f9;
+        }
+        
+        #chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #chat-messages::-webkit-scrollbar-track {
+            background: #f9f9f9;
+        }
+        
+        #chat-messages::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
+        }
+    </style>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const userQuestionInput = document.getElementById('user-question');
+        const sendButton = document.getElementById('send-question');
+        const errorDiv = document.getElementById('chat-error');
+        
+        function addMessage(content, isUser = false, isLoading = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${isUser ? 'user-message' : isLoading ? 'loading-message' : 'ai-message'}`;
+            
+            if (isLoading) {
+                messageDiv.innerHTML = '<strong>AI Assistant:</strong> <em>Thinking... 🤔</em>';
+                messageDiv.id = 'loading-message';
+            } else {
+                const sender = isUser ? 'You' : 'AI Assistant';
+                messageDiv.innerHTML = `<strong>${sender}:</strong> ${content}`;
+            }
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+        
+        function removeLoadingMessage() {
+            const loadingMsg = document.getElementById('loading-message');
+            if (loadingMsg) {
+                loadingMsg.remove();
+            }
+        }
+        
+        function sendQuestion() {
+            const question = userQuestionInput.value.trim();
+            
+            // Hide previous errors
+            errorDiv.style.display = 'none';
+            
+            if (!question) {
+                errorDiv.textContent = 'Please enter a question!';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            // Add user message
+            addMessage(question, true);
+            
+            // Add loading message
+            const loadingMsg = addMessage('', false, true);
+            
+            // Clear input and disable button
+            userQuestionInput.value = '';
+            sendButton.disabled = true;
+            sendButton.textContent = 'Sending...';
+            
+            // Make API call
+            fetch('{% url "blog:gemini_chat" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ question: question })
+            })
+            .then(response => response.json())
+            .then(data => {
+                removeLoadingMessage();
+                sendButton.disabled = false;
+                sendButton.textContent = 'Send 🚀';
+                
+                if (data.response) {
+                    addMessage(data.response);
+                } else {
+                    addMessage('Sorry, I encountered an error. Please try again!');
+                    if (data.error) {
+                        errorDiv.textContent = data.error;
+                        errorDiv.style.display = 'block';
+                    }
+                }
+            })
+            .catch(error => {
+                removeLoadingMessage();
+                sendButton.disabled = false;
+                sendButton.textContent = 'Send 🚀';
+                addMessage('Sorry, there was a network error. Please try again!');
+                errorDiv.textContent = 'Network error. Please check your connection.';
+                errorDiv.style.display = 'block';
+            });
+        }
+        
+        // Event listeners
+        sendButton.addEventListener('click', sendQuestion);
+        
+        userQuestionInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendQuestion();
+            }
+        });
+        
+        // Auto-resize textarea
+        userQuestionInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+    </script>
+{% endblock %}

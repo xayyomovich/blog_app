@@ -7,6 +7,11 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.decorators.http import require_POST
 from taggit.models import Tag
 from django.db.models import Count
+from django.http import JsonResponse
+import requests
+import json
+from django.conf import settings
+import google.generativeai as genai
 
 
 class PostListView(ListView):
@@ -98,4 +103,87 @@ def post_detail(request, year, month, day, post):
                            'comments': comments,
                            'form': form,
                            'similar_posts': similar_posts})
+
+
+# New view for pirate translation
+def translate_to_pirate(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            text_to_translate = data.get('text', '')
+
+            if not text_to_translate:
+                return JsonResponse({'error': 'No text provided'}, status=400)
+
+            # Call Fun Translations API
+            response = requests.post(
+                'https://api.funtranslations.com/translate/pirate.json',
+                data={'text': text_to_translate},
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                translated_text = result.get('contents', {}).get('translated', '')
+                return JsonResponse({'translated': translated_text})
+            else:
+                return JsonResponse({'error': 'Translation service unavailable'}, status=503)
+
+        except requests.RequestException:
+            return JsonResponse({'error': 'Translation service error'}, status=503)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid request format'}, status=400)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+# New view for Gemini AI chat
+def gemini_chat(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            user_question = data.get('question', '')
+
+            if not user_question:
+                return JsonResponse({'error': 'No question provided'}, status=400)
+
+            # Prepare API call
+            api_key = settings.GEMINI_API_KEY
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+
+            headers = {
+                "Content-Type": "application/json"
+            }
+
+            body = {
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": user_question}
+                        ]
+                    }
+                ]
+            }
+
+            response = requests.post(url, headers=headers, json=body)
+            if response.status_code != 200:
+                return JsonResponse({'error': 'Gemini API error', 'details': response.text}, status=response.status_code)
+
+            result = response.json()
+            generated_text = result['candidates'][0]['content']['parts'][0]['text']
+
+            return JsonResponse({'response': generated_text})
+
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid request format'}, status=400)
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+# New view to render the AI chat page
+def ai_chat_page(request):
+    return render(request, 'blog/ai_chat.html')
 

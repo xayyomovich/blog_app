@@ -9,6 +9,24 @@
             Share this post
         </a>
     </p>
+
+    <!-- Pirate Translator Section -->
+    <div id="pirate-translator" style="margin: 30px 0; padding: 20px; background: #f9f9f9; border-radius: 5px;">
+        <h3>🏴‍☠️ Pirate Translator</h3>
+        <p>Translate any text to pirate speak!</p>
+        <div style="margin: 10px 0;">
+            <textarea id="text-to-translate" placeholder="Enter text to translate to pirate speak..." style="width: 100%; height: 100px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+        </div>
+        <button id="translate-btn" style="background: #00abff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+            Translate to Pirate! 🏴‍☠️
+        </button>
+        <div id="translation-result" style="margin-top: 15px; padding: 10px; background: white; border: 1px solid #ddd; border-radius: 4px; display: none;">
+            <h4>Pirate Translation:</h4>
+            <p id="translated-text"></p>
+        </div>
+        <div id="translation-error" style="margin-top: 15px; color: #cc0033; display: none;"></div>
+    </div>
+
     <h2>Similar posts</h2>
     {% for post in similar_posts %}
         <p>
@@ -17,11 +35,13 @@
     {% empty %}
         There are no similar posts yet.
     {% endfor %}
+
     {% with comments.count as total_comments %}
     <h2>
       {{ total_comments }} comment{{ total_comments|pluralize }}
     </h2>
-  {% endwith %}
+    {% endwith %}
+
     {% for comment in comments %}
     <div class="comment">
       <p class="info">
@@ -30,12 +50,61 @@
       </p>
       {{ comment.body|linebreaks }}
     </div>
-  {% empty %}
+    {% empty %}
     <p>There are no comments.</p>
-  {% endfor %}
-  {% include "blog/post/includes/comment_form.html" %}
+    {% endfor %}
+
+    {% include "blog/post/includes/comment_form.html" %}
+
+    <script>
+        document.getElementById('translate-btn').addEventListener('click', function() {
+            const textToTranslate = document.getElementById('text-to-translate').value.trim();
+            const resultDiv = document.getElementById('translation-result');
+            const errorDiv = document.getElementById('translation-error');
+            const button = this;
+
+            // Hide previous results
+            resultDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+
+            if (!textToTranslate) {
+                errorDiv.textContent = 'Please enter some text to translate!';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            // Show loading state
+            button.disabled = true;
+            button.textContent = 'Translating... 🏴‍☠️';
+
+            // Make API call
+            fetch('{% url "blog:translate_pirate" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ text: textToTranslate })
+            })
+            .then(response => response.json())
+            .then(data => {
+                button.disabled = false;
+                button.textContent = 'Translate to Pirate! 🏴‍☠️';
+
+                if (data.translated) {
+                    document.getElementById('translated-text').textContent = data.translated;
+                    resultDiv.style.display = 'block';
+                } else {
+                    errorDiv.textContent = data.error || 'Translation failed. Please try again!';
+                    errorDiv.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                button.disabled = false;
+                button.textContent = 'Translate to Pirate! 🏴‍☠️';
+                errorDiv.textContent = 'Network error. Please try again!';
+                errorDiv.style.display = 'block';
+            });
+        });
+    </script>
 {% endblock %}
-
-
-
-
