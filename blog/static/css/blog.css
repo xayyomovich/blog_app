@@ -87,9 +87,9 @@ input[type=submit] {
 .comment {
     padding:10px;
 }
-.comment:nth-child(even) {
-    background:#efefef;
-}
+/*.comment:nth-child(even) {*/
+/*    background:#efefef;*/
+/*}*/
 .comment .info {
     font-weight:bold;
     font-size:12px;
